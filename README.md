@@ -1,5 +1,12 @@
 # ZombieLunging
 
+## Editor's notes
+
+I would recommend binding the command to a key by typing this in the console:
+```
+cmdbind <key> .lunge
+```
+
 ## Config
 ```yml
 zl_enable: true
