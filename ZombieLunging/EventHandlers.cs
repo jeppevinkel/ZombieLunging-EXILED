@@ -21,8 +21,6 @@ namespace ZombieLunging
 			if (ev.NewRole != RoleType.Scp0492) return;
 			if ((Object)component != (Object)null) component.Destroy();
 			ev.Player.ReferenceHub.gameObject.AddComponent<CustomZombie>();
-
-			MEC.Timing.CallDelayed(3f, () => ev.Player.Position = Exiled.API.Features.Map.GetRandomSpawnPoint(RoleType.Scp173));
 		}
 
 		public void OnConsoleCommand(SendingConsoleCommandEventArgs ev)
