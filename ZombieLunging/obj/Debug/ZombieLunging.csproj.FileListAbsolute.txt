@@ -16,3 +16,20 @@ D:\jeppe\Documents\Visual Studio Projects\ZombieLunging-EXILED\ZombieLunging\obj
 D:\jeppe\Documents\Visual Studio Projects\ZombieLunging-EXILED\ZombieLunging\obj\Debug\ZombieLunging.csproj.CopyComplete
 D:\jeppe\Documents\Visual Studio Projects\ZombieLunging-EXILED\ZombieLunging\obj\Debug\ZombieLunging.dll
 D:\jeppe\Documents\Visual Studio Projects\ZombieLunging-EXILED\ZombieLunging\obj\Debug\ZombieLunging.pdb
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\obj\Debug\ZombieLunging.csprojAssemblyReference.cache
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\obj\Debug\ZombieLunging.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\obj\Debug\ZombieLunging.pdb
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\ZombieLunging.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\ZombieLunging.pdb
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\0Harmony.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\Assembly-CSharp_publicized.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\Exiled.API.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\Exiled.Events.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\Exiled.Loader.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\Exiled.Permissions.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\Exiled.Updater.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\System.Buffers.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\System.Memory.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\System.Numerics.Vectors.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+C:\Users\Infer\Source\Repos\ZombieLunging-EXILED\ZombieLunging\obj\Debug\ZombieLunging.csproj.CopyComplete

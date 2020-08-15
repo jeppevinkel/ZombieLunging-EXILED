@@ -5,8 +5,9 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using CustomPlayerEffects;
-using EXILED;
-using EXILED.Extensions;
+using Exiled.API.Features;
+using Exiled.Events;
+using Exiled.Events.EventArgs;
 using MEC;
 using UnityEngine;
 
@@ -24,97 +25,92 @@ namespace ZombieLunging
 		private SinkHole sinkHole;
 		private CoroutineHandle forceSlowDownCoroutine;
 		private CoroutineHandle forceSpeedUpCoroutine;
-		private const float forceSlowDownInterval = 0.1f;
 
 		private void Awake()
 		{
-			Events.PlayerHurtEvent += new Events.PlayerHurt(this.OnPlayerHurt);
-			Events.PlayerLeaveEvent += new Events.OnPlayerLeave(this.OnPlayerLeave);
-			Events.RoundRestartEvent += new Events.OnRoundRestart(this.OnRoundRestart);
-			Events.SetClassEvent += new Events.SetClass(this.OnSetClass);
+			Exiled.Events.Handlers.Player.Hurting += OnPlayerHurt;
+			Exiled.Events.Handlers.Player.Left += OnPlayerLeave;
+			Exiled.Events.Handlers.Server.RestartingRound += OnRoundRestart;
+			Exiled.Events.Handlers.Player.ChangingRole += OnSetClass;
 
-			this.playerReferenceHub = this.GetComponent<ReferenceHub>();
-			this.scp207 = (Scp207)typeof(PlyMovementSync).GetField("_scp207", BindingFlags.Instance | BindingFlags.NonPublic).GetValue((object)this.playerReferenceHub.plyMovementSync);
-			this.sinkHole = (SinkHole)typeof(PlyMovementSync).GetField("_sinkhole", BindingFlags.Instance | BindingFlags.NonPublic).GetValue((object)this.playerReferenceHub.plyMovementSync);
-			this.sinkHole.slowAmount = Plugin.slowdownAmount;
+			playerReferenceHub = GetComponent<ReferenceHub>();
+			scp207 = playerReferenceHub.playerEffectsController.GetEffect<Scp207>();
+			sinkHole = playerReferenceHub.playerEffectsController.GetEffect<SinkHole>();
+			sinkHole.slowAmount = Plugin.instance.Config.SlowdownAmount;
 		}
 
 		public void Destroy()
 		{
-			Events.PlayerHurtEvent -= new Events.PlayerHurt(this.OnPlayerHurt);
-			Events.PlayerLeaveEvent -= new Events.OnPlayerLeave(this.OnPlayerLeave);
-			Events.RoundRestartEvent -= new Events.OnRoundRestart(this.OnRoundRestart);
-			Events.SetClassEvent -= new Events.SetClass(this.OnSetClass);
-			this.KillCoroutines();
-			UnityEngine.Object.Destroy((UnityEngine.Object)this);
+			Exiled.Events.Handlers.Player.Hurting -= OnPlayerHurt;
+			Exiled.Events.Handlers.Player.Left -= OnPlayerLeave;
+			Exiled.Events.Handlers.Server.RestartingRound -= OnRoundRestart;
+			Exiled.Events.Handlers.Player.ChangingRole -= OnSetClass;
+
+			KillCoroutines();
+			GameObject.Destroy((UnityEngine.Object)this);
 		}
 
 		public void ActivateSlowdown()
 		{
-			if (this.forceSpeedUpCoroutine.IsRunning)
-				Timing.KillCoroutines(this.forceSpeedUpCoroutine);
-			this.forceSlowDownCoroutine = Timing.RunCoroutine(this.ForceSlowDown(Plugin.penaltyTime, 0.1f), Segment.FixedUpdate);
+			if (forceSpeedUpCoroutine.IsRunning)
+				Timing.KillCoroutines(forceSpeedUpCoroutine);
+			forceSlowDownCoroutine = Timing.RunCoroutine(ForceSlowDown(Plugin.instance.Config.PenaltyTime, 0.1f), Segment.FixedUpdate);
 		}
 
 		public void ActivateSpeedUp()
 		{
-			if (this.forceSlowDownCoroutine.IsRunning)
-				Timing.KillCoroutines(this.forceSlowDownCoroutine);
+			if (forceSlowDownCoroutine.IsRunning)
+				Timing.KillCoroutines(forceSlowDownCoroutine);
 
-			this.victims = 0;
+			victims = 0;
 			lunging = true;
 
-			this.forceSpeedUpCoroutine = Timing.RunCoroutine(this.ForceSpeedUp(Plugin.lungeTime, 0.1f), Segment.FixedUpdate);
+			forceSpeedUpCoroutine = Timing.RunCoroutine(ForceSpeedUp(Plugin.instance.Config.LungeTime, 0.1f), Segment.FixedUpdate);
 		}
 
-		public void OnPlayerHurt(ref PlayerHurtEvent ev)
+		public void OnPlayerHurt(HurtingEventArgs ev)
 		{
-			if ((UnityEngine.Object)ev.Player == (UnityEngine.Object)this.playerReferenceHub && ev.DamageType == DamageTypes.Scp207)
-				ev.Amount = 0.0f;
+			if (ev.Target.Id == playerReferenceHub.playerId && ev.Target.Role == RoleType.Scp0492 && ev.DamageType == DamageTypes.Scp207) ev.Amount = 0.0f;
 
-			if ((UnityEngine.Object)ev.Attacker == (UnityEngine.Object)this.playerReferenceHub && (UnityEngine.Object)ev.Player != (UnityEngine.Object)this.playerReferenceHub && this.lunging)
+			if (ev.Attacker.Id == playerReferenceHub.playerId && ev.Target.Id != playerReferenceHub.playerId && lunging)
 			{
-				this.victims++;
-
-				ev.Player.GetComponent<PlayerSpeeds>().ActivateSlowdown();
-				if (!string.IsNullOrEmpty(Plugin.victimMessage)) ev.Player.Broadcast(5, Plugin.victimMessage);
+				victims++;
+				ev.Target.ReferenceHub.GetComponent<PlayerSpeeds>().ActivateSlowdown();
+				if (!string.IsNullOrEmpty(Plugin.instance.Config.VictimMessage)) ev.Target.Broadcast(5, Plugin.instance.Config.VictimMessage);
 			}
 		}
 
-		public void OnPlayerLeave(PlayerLeaveEvent ev)
+		public void OnPlayerLeave(LeftEventArgs ev)
 		{
-			if (!((UnityEngine.Object)ev.Player == (UnityEngine.Object)this.playerReferenceHub))
-				return;
-			this.Destroy();
+			if (!(ev.Player.Id == playerReferenceHub.playerId)) return;
+			Destroy();
 		}
 
 		public void OnRoundRestart()
 		{
-			this.Destroy();
+			Destroy();
 		}
 
-		public void OnSetClass(SetClassEvent ev)
+		public void OnSetClass(ChangingRoleEventArgs ev)
 		{
-			if (!((UnityEngine.Object)ev.Player == (UnityEngine.Object)this.playerReferenceHub))
-				return;
-			this.Destroy();
+			if (!(ev.Player.Id == playerReferenceHub.playerId)) return;
+			Destroy();
 		}
 
 		private IEnumerator<float> ForceSlowDown(float totalWaitTime, float interval)
 		{
 			float waitedTime = 0.0f;
-			this.scp207.ServerDisable();
+			playerReferenceHub.playerEffectsController.DisableEffect<Scp207>();
 			while ((double)waitedTime < (double)totalWaitTime)
 			{
-				if (!this.sinkHole.Enabled)
-					this.sinkHole.ServerEnable();
+				if (!sinkHole.Enabled) playerReferenceHub.playerEffectsController.EnableEffect<SinkHole>();
 				waitedTime += interval;
 				yield return Timing.WaitForSeconds(interval);
 			}
-			this.sinkHole.ServerDisable();
+			playerReferenceHub.playerEffectsController.DisableEffect<SinkHole>();
 			lunging = false;
-			cooldown = Plugin.lungeCooldown;
-			Timing.RunCoroutine(DecreaseCooldown(Plugin.lungeCooldown, 0.1f));
+			cooldown = Plugin.instance.Config.LungeCooldown;
+			Timing.RunCoroutine(DecreaseCooldown(Plugin.instance.Config.LungeCooldown, 0.1f));
 		}
 
 		private IEnumerator<float> DecreaseCooldown(float totalWaitTime, float interval)
@@ -133,37 +129,34 @@ namespace ZombieLunging
 		private IEnumerator<float> ForceSpeedUp(float totalWaitTime, float interval)
 		{
 			float waitedTime = 0.0f;
-			this.sinkHole.ServerDisable();
+			playerReferenceHub.playerEffectsController.DisableEffect<SinkHole>();
 			while ((double)waitedTime < (double)totalWaitTime)
 			{
-				if (!this.scp207.Enabled)
-					this.scp207.ServerEnable();
+				if (!scp207.Enabled) playerReferenceHub.playerEffectsController.ChangeByString("scp207", (byte)Plugin.instance.Config.ColaIntensity);
 				waitedTime += interval;
 				yield return Timing.WaitForSeconds(interval);
 			}
-			this.scp207.ServerDisable();
+			playerReferenceHub.playerEffectsController.DisableEffect<Scp207>();
 
 			if (victims == 0)
 			{
 				lunging = true;
 				ActivateSlowdown();
-				playerReferenceHub.Broadcast(4, Plugin.penaltyMessage);
+				Player.Get(playerReferenceHub).Broadcast(4, Plugin.instance.Config.PenaltyMessage);
 			}
 			else
 			{
 				lunging = false;
-				cooldown = Plugin.lungeCooldown;
-				Timing.RunCoroutine(DecreaseCooldown(Plugin.lungeCooldown, 0.1f));
+				cooldown = Plugin.instance.Config.LungeCooldown;
+				Timing.RunCoroutine(DecreaseCooldown(Plugin.instance.Config.LungeCooldown, 0.1f));
 			}
 		}
 
 		private void KillCoroutines()
 		{
-			if (this.forceSlowDownCoroutine.IsRunning)
-				Timing.KillCoroutines(this.forceSlowDownCoroutine);
-			if (!this.forceSpeedUpCoroutine.IsRunning)
-				return;
-			Timing.KillCoroutines(this.forceSpeedUpCoroutine);
+			if (forceSlowDownCoroutine.IsRunning) Timing.KillCoroutines(forceSlowDownCoroutine);
+			if (!forceSpeedUpCoroutine.IsRunning) return;
+			Timing.KillCoroutines(forceSpeedUpCoroutine);
 		}
 	}
 
@@ -178,93 +171,86 @@ namespace ZombieLunging
 
 		private void Awake()
 		{
-			Events.PlayerHurtEvent += new Events.PlayerHurt(this.OnPlayerHurt);
-			Events.PlayerLeaveEvent += new Events.OnPlayerLeave(this.OnPlayerLeave);
-			Events.RoundRestartEvent += new Events.OnRoundRestart(this.OnRoundRestart);
+			Exiled.Events.Handlers.Player.Hurting += OnPlayerHurt;
+			Exiled.Events.Handlers.Player.Left += OnPlayerLeave;
+			Exiled.Events.Handlers.Server.RestartingRound += OnRoundRestart;
 
-			this.playerReferenceHub = this.GetComponent<ReferenceHub>();
-			this.scp207 = (Scp207)typeof(PlyMovementSync).GetField("_scp207", BindingFlags.Instance | BindingFlags.NonPublic).GetValue((object)this.playerReferenceHub.plyMovementSync);
-			this.sinkHole = (SinkHole)typeof(PlyMovementSync).GetField("_sinkhole", BindingFlags.Instance | BindingFlags.NonPublic).GetValue((object)this.playerReferenceHub.plyMovementSync);
-			this.sinkHole.slowAmount = Plugin.slowdownAmount;
+			playerReferenceHub = this.GetComponent<ReferenceHub>();
+			scp207 = playerReferenceHub.playerEffectsController.GetEffect<Scp207>();
+			sinkHole = playerReferenceHub.playerEffectsController.GetEffect<SinkHole>();
+			sinkHole.slowAmount = Plugin.instance.Config.SlowdownAmount;
 		}
 
 		public void Destroy()
 		{
-			Events.PlayerHurtEvent -= new Events.PlayerHurt(this.OnPlayerHurt);
-			Events.PlayerLeaveEvent -= new Events.OnPlayerLeave(this.OnPlayerLeave);
-			Events.RoundRestartEvent -= new Events.OnRoundRestart(this.OnRoundRestart);
-			this.KillCoroutines();
-			UnityEngine.Object.Destroy((UnityEngine.Object)this);
+			Exiled.Events.Handlers.Player.Hurting -= OnPlayerHurt;
+			Exiled.Events.Handlers.Player.Left -= OnPlayerLeave;
+			Exiled.Events.Handlers.Server.RestartingRound -= OnRoundRestart;
+
+			KillCoroutines();
+			GameObject.Destroy((UnityEngine.Object)this);
 		}
 
 		public void ActivateSlowdown()
 		{
-			if (this.forceSpeedUpCoroutine.IsRunning)
-				Timing.KillCoroutines(this.forceSpeedUpCoroutine);
-			this.forceSlowDownCoroutine = Timing.RunCoroutine(this.ForceSlowDown(Plugin.slowdownTime, 0.1f), Segment.FixedUpdate);
+			if (forceSpeedUpCoroutine.IsRunning) Timing.KillCoroutines(forceSpeedUpCoroutine);
+			forceSlowDownCoroutine = Timing.RunCoroutine(ForceSlowDown(Plugin.instance.Config.SlowdownTime, 0.1f), Segment.FixedUpdate);
 		}
 
 		public void ActivateSpeedUp()
 		{
-			if (this.forceSlowDownCoroutine.IsRunning)
-				Timing.KillCoroutines(this.forceSlowDownCoroutine);
+			if (forceSlowDownCoroutine.IsRunning) Timing.KillCoroutines(forceSlowDownCoroutine);
 
-			this.forceSpeedUpCoroutine = Timing.RunCoroutine(this.ForceSpeedUp(Plugin.lungeTime, 0.1f), Segment.FixedUpdate);
+			forceSpeedUpCoroutine = Timing.RunCoroutine(ForceSpeedUp(Plugin.instance.Config.LungeTime, 0.1f), Segment.FixedUpdate);
 		}
 
-		public void OnPlayerHurt(ref PlayerHurtEvent ev)
+		public void OnPlayerHurt(HurtingEventArgs ev)
 		{
-			if ((UnityEngine.Object)ev.Player == (UnityEngine.Object)this.playerReferenceHub && ev.DamageType == DamageTypes.Scp207)
-				ev.Amount = 0.0f;
+			if (ev.Target.Id == playerReferenceHub.playerId && ev.Target.Role == RoleType.Scp0492 && ev.DamageType == DamageTypes.Scp207) ev.Amount = 0.0f;
 		}
 
-		public void OnPlayerLeave(PlayerLeaveEvent ev)
+		public void OnPlayerLeave(LeftEventArgs ev)
 		{
-			if (!((UnityEngine.Object)ev.Player == (UnityEngine.Object)this.playerReferenceHub))
-				return;
-			this.Destroy();
+			if (!(ev.Player.Id == playerReferenceHub.playerId)) return;
+			Destroy();
 		}
 
 		public void OnRoundRestart()
 		{
-			this.Destroy();
+			Destroy();
 		}
 
 		private IEnumerator<float> ForceSlowDown(float totalWaitTime, float interval)
 		{
 			float waitedTime = 0.0f;
-			this.scp207.ServerDisable();
+			playerReferenceHub.playerEffectsController.DisableEffect<Scp207>();
 			while ((double)waitedTime < (double)totalWaitTime)
 			{
-				if (!this.sinkHole.Enabled)
-					this.sinkHole.ServerEnable();
+				if (!sinkHole.Enabled) playerReferenceHub.playerEffectsController.EnableEffect<SinkHole>();
 				waitedTime += interval;
 				yield return Timing.WaitForSeconds(interval);
 			}
-			this.sinkHole.ServerDisable();
+			playerReferenceHub.playerEffectsController.DisableEffect<SinkHole>();
 		}
 
 		private IEnumerator<float> ForceSpeedUp(float totalWaitTime, float interval)
 		{
 			float waitedTime = 0.0f;
-			this.sinkHole.ServerDisable();
+			playerReferenceHub.playerEffectsController.DisableEffect<SinkHole>();
 			while ((double)waitedTime < (double)totalWaitTime)
 			{
-				if (!this.scp207.Enabled)
-					this.scp207.ServerEnable();
+				if (!scp207.Enabled) playerReferenceHub.playerEffectsController.ChangeByString("scp207", (byte)Plugin.instance.Config.ColaIntensity);
 				waitedTime += interval;
 				yield return Timing.WaitForSeconds(interval);
 			}
-			this.scp207.ServerDisable();
+			playerReferenceHub.playerEffectsController.DisableEffect<Scp207>();
 		}
 
 		private void KillCoroutines()
 		{
-			if (this.forceSlowDownCoroutine.IsRunning)
-				Timing.KillCoroutines(this.forceSlowDownCoroutine);
-			if (!this.forceSpeedUpCoroutine.IsRunning)
-				return;
-			Timing.KillCoroutines(this.forceSpeedUpCoroutine);
+			if (forceSlowDownCoroutine.IsRunning) Timing.KillCoroutines(forceSlowDownCoroutine);
+			if (!forceSpeedUpCoroutine.IsRunning) return;
+			Timing.KillCoroutines(forceSpeedUpCoroutine);
 		}
 	}
 }
