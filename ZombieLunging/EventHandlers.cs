@@ -1,14 +1,6 @@
 using System;
-using System.Collections.Generic;
-using CustomPlayerEffects;
-using EXILED;
-using EXILED.Extensions;
-using EXILED.Patches;
-using Grenades;
-using MEC;
+using Exiled.Events.EventArgs;
 using Object = UnityEngine.Object;
-using PlayerHurtEvent = EXILED.PlayerHurtEvent;
-using SetClassEvent = EXILED.SetClassEvent;
 
 namespace ZombieLunging
 {
@@ -17,43 +9,34 @@ namespace ZombieLunging
 		public Plugin plugin;
 		public EventHandlers(Plugin plugin) => this.plugin = plugin;
 
-		public void OnWaitingForPlayers()
+		public void OnSetClass(ChangingRoleEventArgs ev)
 		{
-			plugin.LoadConfig();
+			if (ev.Player.Nickname == "Dedicated Server") return;
+
+			PlayerSpeeds component1 = ev.Player.ReferenceHub.gameObject.GetComponent<PlayerSpeeds>();
+			if ((Object)component1 != (Object)null) component1.Destroy();
+			ev.Player.ReferenceHub.gameObject.AddComponent<PlayerSpeeds>();
+
+			CustomZombie component = ev.Player.ReferenceHub.gameObject.GetComponent<CustomZombie>();
+			if (ev.NewRole != RoleType.Scp0492) return;
+			if ((Object)component != (Object)null) component.Destroy();
+			ev.Player.ReferenceHub.gameObject.AddComponent<CustomZombie>();
 		}
 
-		public void OnSetClass(SetClassEvent ev)
+		public void OnConsoleCommand(SendingConsoleCommandEventArgs ev)
 		{
-			if (ev.Player.GetNickname() == "Dedicated Server")
-				return;
-
-			PlayerSpeeds component1 = ev.Player.gameObject.GetComponent<PlayerSpeeds>();
-			if ((Object)component1 != (Object)null)
-				component1.Destroy();
-			ev.Player.gameObject.AddComponent<PlayerSpeeds>();
-
-			CustomZombie component = ev.Player.gameObject.GetComponent<CustomZombie>();
-			if (ev.Role != RoleType.Scp0492)
-				return;
-			if ((Object)component != (Object)null)
-				component.Destroy();
-			ev.Player.gameObject.AddComponent<CustomZombie>();
-		}
-
-		public void OnConsoleCommand(ConsoleCommandEvent ev)
-		{
-			if (ev.Player.GetRole() != RoleType.Scp0492) return;
-			if (ev.Command == "lunge")
+			if (ev.Player.Role != RoleType.Scp0492) return;
+			if (ev.Name.ToLower() == "lunge")
 			{
-				if (ev.Player.GetComponent<CustomZombie>().cooldown > 0)
+				if (ev.Player.ReferenceHub.GetComponent<CustomZombie>().cooldown > 0)
 				{
-					if (!string.IsNullOrEmpty(Plugin.lungeMessage)) ev.Player.Broadcast(2, Plugin.lungeCooldownMessage.Replace("{time}",  Math.Round(ev.Player.GetComponent<CustomZombie>().cooldown).ToString()));
+					if (!string.IsNullOrEmpty(Plugin.instance.Config.LungeMessage)) ev.Player.Broadcast(2, Plugin.instance.Config.LungeCooldownMessage.Replace("{time}",  Math.Round(ev.Player.ReferenceHub.GetComponent<CustomZombie>().cooldown).ToString()));
 				}
-				else if (!ev.Player.GetComponent<CustomZombie>().lunging)
+				else if (!ev.Player.ReferenceHub.GetComponent<CustomZombie>().lunging)
 				{
-					if (!string.IsNullOrEmpty(Plugin.lungeMessage)) ev.Player.Broadcast(5, Plugin.lungeMessage);
-					ev.Player.GetComponent<CustomZombie>().ActivateSpeedUp();
-					ev.ReturnMessage = !string.IsNullOrEmpty(Plugin.lungeMessage) ? Plugin.lungeMessage : "You have activated your lunge!";
+					if (!string.IsNullOrEmpty(Plugin.instance.Config.LungeMessage)) ev.Player.Broadcast(5, Plugin.instance.Config.LungeMessage);
+					ev.Player.ReferenceHub.GetComponent<CustomZombie>().ActivateSpeedUp();
+					ev.ReturnMessage = !string.IsNullOrEmpty(Plugin.instance.Config.LungeMessage) ? Plugin.instance.Config.LungeMessage : "You have activated your lunge!";
 					ev.Color = "Green";
 				}
 				else
